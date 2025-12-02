@@ -173,7 +173,7 @@ function loadHistory() {
     req.onsuccess = () => {
         const table = document.getElementById("history");
         table.innerHTML = `<tr><th>時刻</th><th>1回目</th><th>2回目</th><th>結果</th></tr>`;
-        req.result.reverse().forEach(r => {
+        req.result.reverse().slice(0,5).forEach(r => {
             table.innerHTML += `<tr><td>${r.time}</td><td>${r.first}</td><td>${r.second}</td><td>${r.result}</td></tr>`;
         });
     };
@@ -193,5 +193,6 @@ document.getElementById('resetBtn').addEventListener('click', resetAll);
 </script>
 </body>
 </html>
+
 
 
