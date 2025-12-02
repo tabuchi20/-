@@ -74,7 +74,8 @@ video {
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.19.1/umd/index.min.js"></script>
 <script>
 let step = 1;
-let firstCode = "";
+let firstCode1 = "";
+let firstCode2 = "";
 let secondCode = "";
 let scanning = false;
 const successSound = new Audio("https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg");
@@ -94,7 +95,6 @@ function setStatus(text, type="normal") {
     s.textContent = text;
     s.className = type;
 }
-// QRコード専用リーダー
 const codeReader = new ZXing.BrowserQRCodeReader();
 const videoElement = document.getElementById('v');
 const frame = document.getElementById('scan-frame');
@@ -121,23 +121,38 @@ function stopCamera() {
     }
     videoElement.srcObject = null;
 }
-// スキャン結果処理
 function handleScan(code) {
     if (step === 1) {
-        firstCode = code;
+        if (code.length < 29) {
+            setStatus("バーコードが短すぎます（29文字未満）", "ng");
+            return;
+        }
+        firstCode1 = code.substring(28, 38); // 29文字目から10文字
+        firstCode2 = code.length >= 20 ? code.substring(10, 20) : ""; // 11文字目から10文字
         setStatus("1回目完了 → 2回目のQRコードを読み取ってください", "normal");
         step = 2;
     } else if (step === 2) {
-        secondCode = code;
-        const result = (firstCode === secondCode);
-        if (result) { setStatus(":チェックマーク大: 一致しました！", "ok"); successSound.play(); frame.style.borderColor = 'green'; }
-        else { setStatus(":x_黒太字: 不一致です", "ng"); errorSound.play(); frame.style.borderColor = 'red'; }
-        saveResult(firstCode, secondCode, result ? "OK" : "NG");
+        if (code.length < 34) {
+            setStatus("バーコードが短すぎます（34文字未満）", "ng");
+            return;
+        }
+        secondCode = code.substring(33, 43); // 34文字目から10文字
+        // 判定：firstCode1 または firstCode2 と一致すればOK
+        let matchOK = (secondCode === firstCode1) || (firstCode2 !== "" && secondCode === firstCode2);
+        if (matchOK) {
+            setStatus(":チェックマーク大: 一致しました！", "ok");
+            successSound.play();
+            frame.style.borderColor = 'green';
+        } else {
+            setStatus(":x_黒太字: 不一致です", "ng");
+            errorSound.play();
+            frame.style.borderColor = 'red';
+        }
+        saveResult(firstCode1 + (firstCode2 ? " / " + firstCode2 : ""), secondCode, matchOK ? "OK" : "NG");
         loadHistory();
         step = 3;
     }
 }
-// IndexedDB 保存
 function saveResult(first, second, result) {
     const tx = db.transaction("checks", "readwrite");
     tx.objectStore("checks").add({
@@ -147,7 +162,6 @@ function saveResult(first, second, result) {
         result
     });
 }
-// 履歴表示
 function loadHistory() {
     const tx = db.transaction("checks", "readonly");
     const req = tx.objectStore("checks").getAll();
@@ -159,15 +173,14 @@ function loadHistory() {
         });
     };
 }
-// リセット
 function resetAll() {
     step = 1;
-    firstCode = "";
+    firstCode1 = "";
+    firstCode2 = "";
     secondCode = "";
     setStatus("1回目のQRコードを読み取ってください", "normal");
     frame.style.borderColor = 'rgba(0,200,0,0.7)';
 }
-// ボタンイベント
 document.getElementById('scanBtn').addEventListener('click', scan);
 document.getElementById('resetBtn').addEventListener('click', resetAll);
 </script>
