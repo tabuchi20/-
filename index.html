@@ -58,11 +58,6 @@ video {
     pointer-events: none;
     box-sizing: border-box;
 }
-#resetAfterScan {
-    display: none;
-    background: #0066cc;
-    color: white;
-}
 </style>
 </head>
 <body>
@@ -73,8 +68,7 @@ video {
     <div id="scan-frame"></div>
 </div>
 <button id="scanBtn">QRコードを読み取る</button>
-<button id="resetBtn">次のペアを読み取る</button>
-<button id="resetAfterScan">最初に戻る</button>
+<button id="resetBtn">最初に戻る</button>
 <h3>履歴</h3>
 <table id="history"></table>
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.19.1/umd/index.min.js"></script>
@@ -98,7 +92,6 @@ req.onsuccess = (e) => {
 };
 const scanBtn = document.getElementById('scanBtn');
 const resetBtn = document.getElementById('resetBtn');
-const resetAfterBtn = document.getElementById('resetAfterScan');
 const videoElement = document.getElementById('v');
 const frame = document.getElementById('scan-frame');
 const codeReader = new ZXing.BrowserQRCodeReader();
@@ -112,7 +105,6 @@ async function scan() {
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } } });
         videoElement.srcObject = stream;
-        // QRコード1件のみ読み取り
         const result = await codeReader.decodeOnceFromVideoDevice(undefined, 'v');
         handleScan(result.text);
         stopCamera();
@@ -153,7 +145,6 @@ function handleScan(code) {
         loadHistory();
         step = 3;
         scanBtn.disabled = true;
-        resetAfterBtn.style.display = "block"; // 「最初に戻る」を表示
     }
 }
 function saveResult(first, second, result) {
@@ -184,11 +175,9 @@ function resetAll() {
     setStatus("1回目のQRコードを読み取ってください", "normal");
     frame.style.borderColor = 'rgba(0,200,0,0.7)';
     scanBtn.disabled = false;
-    resetAfterBtn.style.display = "none";
 }
 scanBtn.addEventListener('click', scan);
 resetBtn.addEventListener('click', resetAll);
-resetAfterBtn.addEventListener('click', resetAll);
 </script>
 </body>
 </html>
