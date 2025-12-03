@@ -79,9 +79,9 @@ let firstCode2 = "";
 let secondCode = "";
 let scanning = false;
 // 音声
-const readSound = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg"); // 1回目読み取り音
-const successSound = new Audio("https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg"); // ピンポーン音
-const errorSound = new Audio("https://actions.google.com/sounds/v1/cartoon/cartoon_boing.ogg"); // ブブー音
+const readSound = new Audio("sounds/yomitori.mp3"); // 1回目読み取り音
+const successSound = new Audio("sounds/seikou.mp3"); // ピンポーン音
+const errorSound = new Audio("sounds/keikoku.mp3"); // ブブー音
 let db;
 const req = indexedDB.open("checksDB", 1);
 req.onupgradeneeded = (e) => {
@@ -193,6 +193,7 @@ document.getElementById('resetBtn').addEventListener('click', resetAll);
 </script>
 </body>
 </html>
+
 
 
 
