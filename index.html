@@ -142,7 +142,6 @@ async function scanWithRegion() {
 
         videoElement.srcObject = stream;
 
-        // Canvas 作成
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d");
 
@@ -160,15 +159,21 @@ async function scanWithRegion() {
             const rect = frame.getBoundingClientRect();
             const videoRect = videoElement.getBoundingClientRect();
 
+            // 枠の座標を canvas サイズに変換
             const sx = (rect.left - videoRect.left) * (vw / videoRect.width);
             const sy = (rect.top - videoRect.top) * (vh / videoRect.height);
             const sw = rect.width * (vw / videoRect.width);
             const sh = rect.height * (vh / videoRect.height);
 
-            const imageData = ctx.getImageData(sx, sy, sw, sh);
+            // 枠の部分だけを別 canvas にコピー
+            const frameCanvas = document.createElement("canvas");
+            frameCanvas.width = sw;
+            frameCanvas.height = sh;
+            const frameCtx = frameCanvas.getContext("2d");
+            frameCtx.drawImage(canvas, sx, sy, sw, sh, 0, 0, sw, sh);
 
             try {
-                const luminanceSource = new ZXing.HTMLCanvasLuminanceSource(canvas);
+                const luminanceSource = new ZXing.HTMLCanvasLuminanceSource(frameCanvas);
                 const binaryBitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminanceSource));
                 const result = codeReader.decode(binaryBitmap);
                 if (result) {
