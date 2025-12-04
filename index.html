@@ -46,7 +46,7 @@ th, td {
 #video-container {
     position: relative;
     width: 100%;
-    max-width: 400px;
+    max-width: 300px;
     margin: 20px 0;
 }
 video {
@@ -89,7 +89,6 @@ video {
 <button id="resetBtn">最初に戻る</button>
 <h3>履歴</h3>
 <table id="history"></table>
-
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.19.1/umd/index.min.js"></script>
 <script>
 let step = 1;
@@ -127,71 +126,26 @@ function setStatus(text, type="normal") {
 const codeReader = new ZXing.BrowserMultiFormatReader();
 const videoElement = document.getElementById('v');
 
-async function scanWithRegion() {
+async function scan() {
     if (scanning) return;
     scanning = true;
-
     try {
-        const stream = await navigator.mediaDevices.getUserMedia({
+        // ▼ 解像度を上げてカメラ精度改善
+        const constraints = {
             video: {
-                facingMode: { ideal: "environment" },
-                width: { ideal: 1920 },
-                height: { ideal: 1080 }
+                facingMode: "environment",
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
             }
-        });
-
+        };
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
         videoElement.srcObject = stream;
 
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
-
-        const loop = async () => {
-            if (!scanning) return;
-
-            const vw = videoElement.videoWidth;
-            const vh = videoElement.videoHeight;
-            canvas.width = vw;
-            canvas.height = vh;
-            ctx.drawImage(videoElement, 0, 0, vw, vh);
-
-            // scan-frame の位置を取得
-            const frame = document.getElementById("scan-frame");
-            const rect = frame.getBoundingClientRect();
-            const videoRect = videoElement.getBoundingClientRect();
-
-            // 枠の座標を canvas サイズに変換
-            const sx = (rect.left - videoRect.left) * (vw / videoRect.width);
-            const sy = (rect.top - videoRect.top) * (vh / videoRect.height);
-            const sw = rect.width * (vw / videoRect.width);
-            const sh = rect.height * (vh / videoRect.height);
-
-            // 枠の部分だけを別 canvas にコピー
-            const frameCanvas = document.createElement("canvas");
-            frameCanvas.width = sw;
-            frameCanvas.height = sh;
-            const frameCtx = frameCanvas.getContext("2d");
-            frameCtx.drawImage(canvas, sx, sy, sw, sh, 0, 0, sw, sh);
-
-            try {
-                const luminanceSource = new ZXing.HTMLCanvasLuminanceSource(frameCanvas);
-                const binaryBitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(luminanceSource));
-                const result = codeReader.decode(binaryBitmap);
-                if (result) {
-                    handleScan(result.text);
-                    stopCamera();
-                    return;
-                }
-            } catch (err) {
-                // 読み取りできない場合は無視
-            }
-
-            requestAnimationFrame(loop);
-        };
-
-        loop();
-
-    } catch (error) {
-        alert("カメラ起動エラー：" + error.message);
+        const result = await codeReader.decodeOnceFromVideoDevice(undefined, 'v');
+        handleScan(result.text);
+        stopCamera();
+    } catch (e) {
+        alert("読み取り失敗: " + e.message);
         stopCamera();
     }
 }
@@ -204,6 +158,7 @@ function stopCamera() {
 }
 
 function handleScan(code) {
+    /* 通常検品（QRコード） */
     if (mode === "normal") {
         if (step === 1) {
             if (code.length < 29) {
@@ -237,6 +192,7 @@ function handleScan(code) {
         return;
     }
 
+    /* 品番検品（バーコード） */
     if (mode === "hinban") {
         if (step === 1) {
             if (code.length < 1) {
@@ -311,8 +267,9 @@ function resetAll() {
     document.getElementById("scanBtn").style.display = "block";
 }
 
-document.getElementById('scanBtn').addEventListener('click', scanWithRegion);
+document.getElementById('scanBtn').addEventListener('click', scan);
 document.getElementById('resetBtn').addEventListener('click', resetAll);
+
 document.getElementById("modeSelect").addEventListener("change", (e) => {
     mode = e.target.value;
     resetAll();
