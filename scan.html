@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>QR/バーコード検品システム</title>
+<title>バーコード検品システム（ZXing版）</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
@@ -11,18 +11,14 @@ body {
     text-align: center;
     padding: 20px;
 }
-#video {
+#preview {
     width: 90%;
     border: 3px solid #4CAF50;
     border-radius: 10px;
 }
-#result {
-    font-size: 24px;
-    margin-top: 20px;
-}
-#status {
-    font-size: 20px;
-    margin-top: 10px;
+#result, #status {
+    font-size: 22px;
+    margin-top: 15px;
 }
 button {
     padding: 12px 24px;
@@ -32,78 +28,73 @@ button {
 }
 </style>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+<!-- ZXing WebAssembly版 CDN -->
+<script src="https://unpkg.com/@zxing/browser@latest"></script>
+<script src="https://unpkg.com/@zxing/library@latest"></script>
+
 </head>
 <body>
 
 <h2>バーコード検品システム</h2>
 
-<video id="video"></video>
+<video id="preview"></video>
 
-<div id="status">最初の 7 桁バーコードを読み取ってください</div>
+<div id="status">7桁バーコードを読み取ってください</div>
 <div id="result"></div>
 
-<button onclick="startScan()">カメラを起動</button>
+<button id="startBtn">カメラを起動</button>
 
 <script>
-let firstCode = "";   // 最初に読み込んだ7桁
-let step = 1;         // 1 = 7桁読み取り, 2 = 10桁読み取り
+const codeReader = new ZXing.BrowserMultiFormatReader();
+let step = 1; // 1 = 7桁, 2 = 10桁
+let firstCode = "";
 
-function startScan() {
-    Quagga.init({
-        inputStream: {
-            name: "Live",
-            type: "LiveStream",
-            target: document.querySelector('#video'),
-            constraints: {
-                facingMode: "environment"  // スマホ背面カメラ
-            }
-        },
-        decoder: {
-            readers: ["code_128_reader"]
-        }
-    }, function(err) {
-        if (err) {
-            console.error(err);
-            return;
-        }
-        Quagga.start();
-        document.getElementById("status").innerText =
-            step === 1 ? "7桁バーコードを読み取ってください" : "10桁バーコードを読み取ってください";
-    });
+document.getElementById("startBtn").addEventListener("click", () => {
+    startCamera();
+});
 
-    Quagga.onDetected(function(data) {
-        const code = data.codeResult.code;
+async function startCamera() {
+    document.getElementById("result").innerText = "";
 
-        // エラー読み取りを防止
-        if (!code || code.length < 7) return;
+    try {
+        const videoInputDevices = await codeReader.listVideoInputDevices();
 
-        if (step === 1) {
-            if (code.length === 7) {
-                firstCode = code;
-                document.getElementById("result").innerText = "1つ目（7桁）: " + code;
-                step = 2;
-                document.getElementById("status").innerText = "次に 10 桁バーコードを読み取ってください";
-            }
-        } else if (step === 2) {
-            if (code.length === 10) {
-                const first7 = code.substring(0, 7);
+        // 背面カメラを選択
+        const backCam = videoInputDevices.find(d => d.label.toLowerCase().includes("back"))
+                     || videoInputDevices[0];
 
-                if (first7 === firstCode) {
-                    document.getElementById("result").innerHTML =
-                        `<span style="color:green; font-weight:bold;">✔ 一致しました！</span><br>2つ目: ${code}`;
-                } else {
-                    document.getElementById("result").innerHTML =
-                        `<span style="color:red; font-weight:bold;">✖ 不一致です！</span><br>2つ目: ${code}`;
+        await codeReader.decodeFromVideoDevice(backCam.deviceId, 'preview', (result, err) => {
+            if (result) {
+                const code = result.getText();
+
+                if (step === 1 && code.length === 7) {
+                    firstCode = code;
+                    step = 2;
+                    document.getElementById("status").innerText = "次に10桁バーコードを読み取ってください";
+                    document.getElementById("result").innerText = "1つ目（7桁）: " + code;
+                } 
+                else if (step === 2 && code.length === 10) {
+                    const first7 = code.substring(0, 7);
+
+                    if (first7 === firstCode) {
+                        document.getElementById("result").innerHTML =
+                            `<span style="color:green;font-weight:bold;">✔ 一致しました！</span><br>2つ目: ${code}`;
+                    } else {
+                        document.getElementById("result").innerHTML =
+                            `<span style="color:red;font-weight:bold;">✖ 一致しません！</span><br>2つ目: ${code}`;
+                    }
+
+                    // 初期化
+                    step = 1;
+                    firstCode = "";
+                    document.getElementById("status").innerText = "7桁バーコードを読み取ってください";
                 }
-
-                // 初期化して再スタート
-                step = 1;
-                firstCode = "";
-                document.getElementById("status").innerText = "7桁バーコードを読み取ってください";
             }
-        }
-    });
+        });
+    } catch (e) {
+        console.error(e);
+        alert("カメラが起動できませんでした：" + e);
+    }
 }
 </script>
 
